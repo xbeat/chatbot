@@ -1,4 +1,4 @@
-# render.yaml - Versione corretta
+# render.yaml
 services:
   - type: web
     name: ghostwriter-bot
@@ -7,7 +7,6 @@ services:
     plan: free
     repo: https://github.com/xbeat/chatbot
     branch: main
-    autoDeploy: true
     buildCommand: pip install -r requirements.txt
     startCommand: python bot.py
     envVars:
@@ -16,4 +15,9 @@ services:
       - key: HF_API_KEY
         sync: false
       - key: DATABASE_URL
-        sync: false
+        fromService:
+          type: postgres
+          name: chatbot-db  # Deve matchare il nome del DB esistente su Render
+          property: connectionString
+
+# Non serve la sezione databases se il DB esiste già
