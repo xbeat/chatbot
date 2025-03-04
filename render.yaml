@@ -1,0 +1,34 @@
+# render.yaml
+# Configurazione completa per Render.com
+
+services:
+  - type: web
+    name: ghostwriter-bot
+    env: python                # Ambiente Python
+    region: frankfurt          # Scegli fra frankfurt, ohio, oregon
+    plan: free                 # Piano gratuito
+    repo: https://github.com/xbeat/chatbot  # Sostituisci con il tuo repo
+    branch: main               # Branch da monitorare
+    autoDeploy: true           # Deploy automatico ad ogni push
+    
+    # Comandi di build/avvio
+    buildCommand: |
+      pip install -r requirements.txt      
+    startCommand: python bot.py
+    
+    # Variabili d'ambiente (DA IMPOSTARE MANUALMENTE SU RENDER DOPO)
+    envVars:
+      - key: TELEGRAM_TOKEN
+        sync: false            # Da impostare manualmente
+      - key: HF_API_KEY
+        sync: false
+      - key: DB_URL
+        value: ${postgres.chatbot-db.DATABASE_URL}  # Collegamento automatico al DB
+
+  # Database PostgreSQL
+  - type: postgres
+    name: chatbot-db
+    plan: free                 # 0.5 GB storage
+    region: frankfurt          # Deve matchare la regione del web service
+    databaseName: chatbot_db
+    user: chatbot_user
