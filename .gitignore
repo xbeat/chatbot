@@ -1,0 +1,7 @@
+archive/
+venv/
+.env
+*.pyc
+__pycache__/
+.DS_Store
+manage_sql.sh
