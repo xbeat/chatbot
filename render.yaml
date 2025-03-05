@@ -1,7 +1,7 @@
 # render.yaml - Versione corretta
 services:
   - type: web
-    name: ghostwriter-bot
+    name: telegram-bot
     env: python
     region: frankfurt
     plan: free
@@ -13,9 +13,9 @@ services:
     envVars:
       - key: TELEGRAM_TOKEN
         sync: false
-      - key: HF_API_KEY
+      - key: GOOGLE_API_KEY
         sync: false
       - key: DATABASE_URL
         sync: false
       - key: RENDER
-        sync: false
+        sync: false    
