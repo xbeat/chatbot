@@ -118,8 +118,13 @@ class Database:
 
 	# --- Metodi aggiuntivi per nuova funzionalità ---
 	def log_message(self, user_id: int, message: str, response: str):
-		"""Nuovo metodo con naming più esplicito"""
-		self.save_message(user_id, message, response)  # Reindirizza al vecchio metodo
+	    with self.conn.cursor() as cur:
+	        # Assicurati che la tabella message_history esista
+	        cur.execute("""
+	            INSERT INTO message_history (user_id, message, response)
+	            VALUES (%s, %s, %s)
+	        """, (user_id, message, response))
+	        self.conn.commit()
 
 	def __del__(self):
 		"""Chiude la connessione alla distruzione dell'oggetto"""

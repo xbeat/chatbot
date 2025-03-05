@@ -3,14 +3,15 @@ import logging
 import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from threading import Thread
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
 	Application,
 	MessageHandler,
 	filters,
 	CommandHandler,
 	ContextTypes,
-	CallbackContext
+	CallbackContext,
+	CallbackQueryHandler
 )
 from database import Database
 from llm_handler import GeminiHandler
@@ -55,6 +56,7 @@ class TelegramBot:
 		self.app.add_handler(CommandHandler("start", self.start))
 		self.app.add_handler(CommandHandler("clear", self.clear_history))
 		self.app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message))
+		self.app.add_handler(CallbackQueryHandler(self.button_callback))
 
 	async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
 		"""Gestisce il comando /start"""
@@ -72,43 +74,71 @@ class TelegramBot:
 		await update.message.reply_text("✅ Cronologia resettata")
 
 	async def handle_message(self, update: Update, context: CallbackContext):
-		"""Gestisce i messaggi degli utenti"""
-		user = update.effective_user
-		message = update.message.text
-		
-		try:
-			session = self.db.get_session(user.id)
+	    """Gestisce i messaggi degli utenti"""
+	    user = update.effective_user
+	    message = update.message.text
+	    
+	    try:
+	        # Recupera o crea una nuova sessione
+	        session = self.db.get_session(user.id)
+	        if not session:
+	            logger.info(f"Creazione nuova sessione per l'utente {user.id}")
+	            self.db.init_user_session(user.id)
+	            session = {'history': []}  # Struttura predefinita
 
-			# Se la sessione non esiste, creane una nuova
-			if not session:
-				logger.info(f"Creazione nuova sessione per l'utente {user.id}")
-				self.db.init_user_session(user.id)
-				session = {'history': []}  # Struttura predefinita
+	        # Genera la risposta con il contesto della conversazione
+	        response = self.llm.generate_response(
+	            chat_id=user.id,
+	            prompt=message,
+	            history=session['history']  # Passa la cronologia
+	        )
+	        
+	        # Aggiorna la cronologia della conversazione
+	        new_history = session.get('history', []) + [
+	            {"role": "user", "content": message},
+	            {"role": "assistant", "content": response}
+	        ]
+	        
+	        # Salva la sessione aggiornata nel database
+	        self.db.save_session(user.id, {
+	            "history": new_history[-10:],  # Mantieni solo gli ultimi 10 messaggi
+	            "metadata": {
+	                "last_interaction": str(update.message.date),
+	                "message_count": session.get('message_count', 0) + 1
+	            }
+	        })
 
-			response = self.llm.generate_response(
-			    chat_id=user.id,
-			    prompt=message,
-			    history=session['history']  # Passa direttamente la lista
-			)
-			
-			new_history = session.get('history', []) + [
-				{"role": "user", "content": message},
-				{"role": "assistant", "content": response}
-			]
-			
-			self.db.save_session(user.id, {
-				"history": new_history[-10:],
-				"metadata": {
-					"last_interaction": str(update.message.date),
-					"message_count": session.get('message_count', 0) + 1
-				}
-			})
-			
-			await update.message.reply_text(response)
+	        # Logga il messaggio e la risposta nella tabella message_history
+	        self.db.log_message(user.id, message, response)
 
-		except Exception as e:
-			logger.error(f"Errore: {str(e)}", exc_info=True)
-			await update.message.reply_text("⚠️ Si è verificato un errore. Riprova più tardi.")
+	        # Crea la tastiera inline
+	        keyboard = [
+	            [InlineKeyboardButton("🔄 Reset Conversazione", callback_data='reset')],
+	            [InlineKeyboardButton("🌐 Apri Documentazione", url='https://example.com')]
+	        ]
+	        reply_markup = InlineKeyboardMarkup(keyboard)
+
+	        # Invia la risposta con i bottoni
+	        await update.message.reply_text(response, reply_markup=reply_markup)
+
+	    except Exception as e:
+	        logger.error(f"Errore: {str(e)}", exc_info=True)
+	        await update.message.reply_text("⚠️ Si è verificato un errore. Riprova più tardi.")
+
+	async def button_callback(self, update: Update, context: CallbackContext):
+	    """Gestisce i click sui bottoni inline"""
+	    query = update.callback_query
+	    user_id = query.from_user.id
+
+	    # Gestisci il pulsante "Reset Conversazione"
+	    if query.data == 'reset':
+	        self.db.clear_session(user_id)
+	        await query.answer("Conversazione resettata!")
+	        await query.edit_message_text("La conversazione è stata resettata. Cosa vuoi fare ora?")
+
+	    # Conferma l'azione per gli altri bottoni
+	    else:
+	        await query.answer(f"Hai cliccato: {query.data}")
 
 	def run(self):
 		"""Avvia il bot"""
