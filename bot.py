@@ -16,6 +16,7 @@ from telegram.ext import (
 )
 from database import Database
 from llm_handler import GeminiHandler
+import sys
 
 # Configurazione iniziale dei logger
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Disabilita log TensorFlow
@@ -30,10 +31,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO,
-    handlers=[
-        logging.FileHandler('bot.log'),
-        logging.StreamHandler()
-    ]
+    stream=sys.stdout
 )
 
 logger = logging.getLogger(__name__)
