@@ -8,3 +8,5 @@ manage_sql.sh
 chatbot.sublime-workspace
 chatbot.sublime-project
 requirements.in
+generate_pdf.py
+docs/

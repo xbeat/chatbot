@@ -18,4 +18,10 @@ services:
       - key: DATABASE_URL
         sync: false
       - key: RENDER
-        sync: false    
+        sync: false 
+      - key: PINECONE_API_KEY
+        sync: false
+      - key: PINECONE_ENV
+        sync: false
+      - key: PINECONE_INDEX
+        sync: false
