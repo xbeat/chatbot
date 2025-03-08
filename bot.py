@@ -34,6 +34,26 @@ logging.basicConfig(
     stream=sys.stdout
 )
 
+class MaskingFormatter(logging.Formatter):
+    def __init__(self, fmt=None, datefmt=None, style='%'):
+        super().__init__(fmt, datefmt, style)
+        self.token = os.getenv('TELEGRAM_TOKEN')
+        
+    def format(self, record):
+        # Prima formatta il record normalmente
+        formatted = super().format(record)
+        # Poi sostituisci il token se presente
+        if self.token and self.token in formatted:
+            return formatted.replace(self.token, "[TOKEN NASCOSTO]")
+        return formatted
+
+# Configura il logging con il formatter personalizzato
+handler = logging.StreamHandler(sys.stdout)
+handler.setFormatter(MaskingFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+logging.root.handlers = [handler]  # Sostituisci gli handler esistenti
+logging.root.setLevel(logging.INFO)
+
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
